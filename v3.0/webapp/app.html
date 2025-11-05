@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ESP32 BLE Live Dashboard</title>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  :root { --bg:#e7e7e7; --card:#ffffff; --muted:#6b7280; --accent:#0b74de; --success:#16a34a; }
+  body { font-family: Inter, Arial, sans-serif; margin:0; padding:18px; background:var(--bg); color:#111827; max-width:1200px; margin-left:auto; margin-right:auto; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+  .container { display: flex; flex-direction: column; align-items: center;}
+  h1 {font-size: 4.05rem; margin: 0 auto; text-align: center; width: fit-content;}  
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .top-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button { background:var(--accent); color:white; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  .chip { font-weight:600; padding:8px 12px; border-radius:999px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+  .statusRow { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .statusBox { background:var(--card); padding:10px 14px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.03); min-width:160px; }
+  .statusBox .small { font-size:12px; color:var(--muted); }
+  .content { display:grid; grid-template-columns: 1fr 420px; gap:18px; align-items:start; }
+  .left { display:flex; flex-direction:column; gap:12px; }
+  .param-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+  .param { background:var(--card); border-radius:10px; padding:10px; box-shadow:0 1px 4px rgba(13,17,23,0.06); display:flex; flex-direction:column; gap:6px; }
+  .param .label { font-size:13px; color:var(--muted); cursor:pointer; text-decoration:underline; text-underline-offset:4px; width:max-content; }
+  .param .value { font-weight:700; font-size:16px; }
+  .param .meta { font-size:12px; color:var(--muted); }
+  .right { display:flex; flex-direction:column; gap:12px; }
+  .mini-chart-card { background:var(--card); padding:6px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+  .mini-chart-card canvas { width:100% !important; height:150px !important; }
+  .modal-backdrop{ position:fixed; inset:0; display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.45); z-index:50; }
+  .modal{ width:90%; max-width:900px; background:var(--card); border-radius:12px; padding:14px; box-shadow:0 8px 30px rgba(2,6,23,0.35); }
+  .modal header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .close-btn{ background:#efefef; color:#333; border-radius:8px; border:0; padding:6px 10px; cursor:pointer; }
+  .small-note { font-size:12px; color:var(--muted); margin-top:6px; }
+  @media (max-width:980px){ .content { grid-template-columns: 1fr; } .param-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:560px){ .param-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="container">
+
+<header>
+    <h1>ECU⚙️ DashBoard📉</h1>
+</header>
+
+<div class="top-controls">
+  <div class="chip" id="deviceName">Device: </div>
+  <button id="startLogging" disabled>Start Logging</button>
+  <button id="stopLogging" disabled>Stop Logging</button>
+  <button id="deleteSD" disabled>Delete SD</button>
+  <button id="exportCSV" disabled>Export CSV</button>
+  <div id="fileProgress" class="small-note"></div>
+  <button id="connectBtn">Connect</button>
+  <button id="disconnectBtn" disabled>Disconnect</button>
+</div>
+
+<div class="statusRow">
+  <div class="statusBox"><div class="small">BLE</div><div id="bleStatus" style="font-weight:700">Disconnected</div></div>
+  <div class="statusBox"><div class="small">Logging</div><div id="loggingStatus" style="font-weight:700">Unknown</div></div>
+  <div class="statusBox"><div class="small">SD Card</div><div id="sdStatus" style="font-weight:700">Unknown</div></div>
+  <div class="statusBox"><div class="small">Battery Voltage (V)</div><div id="battStatus" style="font-weight:700">—</div></div>
+</div>
+</div>
+<p style="margin-bottom:1cm;"></p>
+
+
+<div class="content">
+  <div class="left">
+      <div style="font-weight:700; text-align:center;">ECU Live Parameters </div>
+    <div id="paramGrid" class="param-grid"></div>
+  </div>
+
+  <aside class="right">
+    <div style="font-weight:700; text-align:center;">Quick Charts</div>
+    <div class="mini-chart-card"><div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Throttle Position (%)</div><canvas id="chartTPS"></canvas></div>
+    <div class="mini-chart-card"><div style="font-size:13px;color:var(--muted);margin-bottom:6px;">RPM</div><canvas id="chartRPM"></canvas></div>
+    <div class="mini-chart-card"><div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Cylinder Temp (°C)</div><canvas id="chartCLT"></canvas></div>
+  </aside>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-backdrop">
+  <div class="modal">
+    <header>
+      <div><div id="modalTitle" style="font-weight:700"></div><div class="small" id="modalSub"></div></div>
+      <div><button class="close-btn" id="closeModal">Close</button></div>
+    </header>
+    <canvas id="modalChart" style="width:100%; height:300px;"></canvas>
+    <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;"><button id="modalExport">Export Graph CSV</button></div>
+  </div>
+</div>
+
+<script>
+/* ------------------------- Config / DOM ------------------------- */
+const serviceUUID = '19b10000-e8f2-537e-4f6c-d104768a1214';
+const dataCharUUID = '19b10001-e8f2-537e-4f6c-d104768a1214';
+const controlCharUUID = '19b10002-e8f2-537e-4f6c-d104768a1214';
+const statusCharUUID = '19b10003-e8f2-537e-4f6c-d104768a1214';
+const fileCharUUID = '19b10004-e8f2-537e-4f6c-d104768a1214';
+
+const connectBtn = document.getElementById('connectBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const startLoggingBtn = document.getElementById('startLogging');
+const stopLoggingBtn = document.getElementById('stopLogging');
+const deleteSDBtn = document.getElementById('deleteSD');
+const exportCSVBtn = document.getElementById('exportCSV');
+const fileProgressEl = document.getElementById('fileProgress');
+const deviceNameChip = document.getElementById('deviceName');
+const bleStatusEl = document.getElementById('bleStatus');
+const loggingStatusEl = document.getElementById('loggingStatus');
+const sdStatusEl = document.getElementById('sdStatus');
+const battStatusEl = document.getElementById('battStatus');
+const paramGrid = document.getElementById('paramGrid');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalSub = document.getElementById('modalSub');
+const closeModal = document.getElementById('closeModal');
+const modalChartCtx = document.getElementById('modalChart').getContext('2d');
+const modalExportBtn = document.getElementById('modalExport');
+const chartTPS_Ctx = document.getElementById('chartTPS').getContext('2d');
+const chartRPM_Ctx = document.getElementById('chartRPM').getContext('2d');
+const chartCLT_Ctx = document.getElementById('chartCLT').getContext('2d');
+
+let bleDevice=null, bleServer=null, dataCharacteristic=null, controlCharacteristic=null, statusCharacteristic=null, fileCharacteristic=null;
+const liveRows = [], MAX_SAMPLES = 500, paramBuffers = {};
+
+/* ------------------------- Parameter definitions ------------------------- */
+const PARAMS = [
+  { key:'seconds', label:'Seconds', unit:'s' },
+  { key:'pw1', label:'Injection PW1 (ms)', unit:'ms' },
+  { key:'pw2', label:'Injection PW2 (ms)', unit:'ms' },
+  { key:'rpm', label:'RPM', unit:'rpm' },
+  { key:'adv_deg', label:'Advance (deg)', unit:'°' },
+  { key:'squirt', label:'Squirt', unit:'' },
+  { key:'afrtgt1', label:'AFR Target 1', unit:'' },
+  { key:'afrtgt2', label:'AFR Target 2', unit:'' },
+  { key:'wbo2_en1', label:'WBO2 Enabled 1', unit:'' },
+  { key:'wbo2_en2', label:'WBO2 Enabled 2', unit:'' },
+  { key:'baro', label:'Barometric Pressure (kPa)', unit:'kPa' },
+  { key:'map', label:'Manifold Abs Pressure (kPa)', unit:'kPa' },
+  { key:'mat', label:'Manifold Air Temp (°C)', unit:'°C' },
+  { key:'clt', label:'Cylinder Temp (°C)', unit:'°C' },
+  { key:'tps', label:'Throttle Position (%)', unit:'%' },
+  { key:'engineReady', label:'Engine Ready', unit:'' },
+  { key:'engineCrank', label:'Engine Crank', unit:'' },
+  { key:'engineStartW', label:'StartW', unit:'' },
+  { key:'engineWarmup', label:'Warmup', unit:'' },
+  { key:'TPSAEN', label:'TPSAEN', unit:'' },
+  { key:'TPSDEN', label:'TPSDEN', unit:'' },
+  // { key:'batt', label:'Battery Voltage (V)', unit:'V' }
+];
+
+/* ------------------------- UI init ------------------------- */
+PARAMS.forEach(p => {
+  paramBuffers[p.key] = [];
+  const card = document.createElement('div'); card.className = 'param'; card.id = 'param-' + p.key;
+  const label = document.createElement('div'); label.className = 'label'; label.textContent = p.label; label.dataset.key = p.key;
+  label.addEventListener('click', () => openParamModal(p.key, p.label, p.unit));
+  const value = document.createElement('div'); value.className = 'value'; value.id = 'value-' + p.key; value.textContent = '-';
+  const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = p.unit || '';
+  card.appendChild(label); card.appendChild(value); card.appendChild(meta);
+  paramGrid.appendChild(card);
+});
+
+/* ------------------------- Charts ------------------------- */
+function createMiniChart(ctx) {
+  return new Chart(ctx, {
+    type:'line',
+    data:{ labels:[], datasets:[ { data:[], fill:false, tension:0.2, borderWidth:2, pointRadius:0 } ] },
+    options:{ animation:false, plugins:{legend:{display:false}}, scales:{ x:{display:false}, y:{ ticks:{ maxTicksLimit:4 } } }, maintainAspectRatio:false }
+  });
+}
+const miniTPS = createMiniChart(chartTPS_Ctx);
+const miniRPM = createMiniChart(chartRPM_Ctx);
+const miniCLT = createMiniChart(chartCLT_Ctx);
+
+let modalChart = null;
+function openParamModal(key,label,unit){
+  modalTitle.textContent = label; modalSub.textContent = unit || '';
+  const buf = paramBuffers[key] || [];
+  const labels = buf.map(d => d.t.toFixed(1));
+  const data = buf.map(d => d.v);
+  if(modalChart){ modalChart.destroy(); modalChart = null; }
+  modalChart = new Chart(modalChartCtx, {
+    type:'line',
+    data:{ labels, datasets:[ { label, data, fill:false, tension:0.15, borderWidth:2, pointRadius:0 } ] },
+    options:{ animation:false, responsive:true, plugins:{legend:{display:false}}, scales:{ x:{ title:{display:true, text:'time (s)'} } } }
+  });
+  modal.style.display = 'flex';
+  modalExportBtn.onclick = () => exportParamCSV(key, label, buf);
+}
+closeModal.addEventListener('click', () => { modal.style.display='none'; if(modalChart) { modalChart.destroy(); modalChart=null; } });
+
+/* ------------------------- CSV ------------------------- */
+function exportCSV() {
+  if(liveRows.length === 0) { alert('No data'); return; }
+  const headers = PARAMS.map(p => p.label);
+  const lines = [ headers.join(',') ];
+  liveRows.forEach(r => lines.push(r.map(v => (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(3) : String(v)).join(',')));
+  const blob = new Blob([ lines.join('\n') ], { type:'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `live_data_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+function exportParamCSV(key,label,buffer){
+  if(!buffer || buffer.length===0) { alert('No samples'); return; }
+  const lines = [ ['time(s)', label].join(',') ];
+  buffer.forEach(r => lines.push([ r.t.toFixed(3), (typeof r.v === 'number') ? r.v.toFixed(6) : r.v ].join(',')));
+  const blob = new Blob([ lines.join('\n') ], { type:'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${label.replace(/\s+/g,'_')}_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+exportCSVBtn.addEventListener('click', exportCSV);
+
+/* ------------------------- ASCII Hex Data Parsing ------------------------- */
+function fahrenheitToCelsius(f) { return (f - 32) * 5 / 9; }
+
+// combine functions expect numeric bytes (0..255)
+function combineUInt16LE(lowByte, highByte) { return ((highByte & 0xFF) << 8) | (lowByte & 0xFF); }
+function combineInt16LE(lowByte, highByte) {
+  let v = combineUInt16LE(lowByte, highByte);
+  if (v & 0x8000) v = v - 0x10000;
+  return v;
+}
+function parseEngineFlags(byte) {
+  return {
+    Ready: (byte & (1<<0)) !== 0,
+    Crank: (byte & (1<<1)) !== 0,
+    StartW: (byte & (1<<2)) !== 0,
+    Warmup: (byte & (1<<3)) !== 0,
+    TPSAEN: (byte & (1<<4)) !== 0,
+    TPSDEN: (byte & (1<<5)) !== 0
+  };
+}
+
+// Convert ASCII hex string to bytes
+function asciiHexStringToBytes(asciiString) {
+  // The ASCII string contains hex characters like "3E 00 7D 11..."
+  // Convert back to actual binary bytes
+  const hexString = asciiString.replace(/[^0-9a-fA-F]/g, '');
+  if (hexString.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(hexString.length/2);
+  for (let i=0;i<hexString.length;i+=2) {
+    bytes[i/2] = parseInt(hexString.substr(i,2),16);
+  }
+  return bytes;
+}
+
+// Parse bytes array (Uint8Array) from ASCII hex data
+function parseBytes(bytes) {
+  if (!bytes || bytes.length < 28) {
+    console.warn('Insufficient bytes:', bytes?.length);
+    return null;
+  }
+  
+  console.log('Parsing bytes:', Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+  
+  // Parse according to data structure
+  // Bytes 0-1: seconds (uint16)
+  const seconds = combineUInt16LE(bytes[0], bytes[1]);
+  
+  // Bytes 2-3: pw1 (uint16)
+  const pw1 = combineUInt16LE(bytes[2], bytes[3])/1000;
+  
+  // Bytes 4-5: pw2 (uint16)
+  const pw2 = combineUInt16LE(bytes[4], bytes[5])/1000;
+  
+  // Bytes 6-7: rpm (uint16)
+  const rpm = combineUInt16LE(bytes[6], bytes[7]);
+  
+  // Bytes 8-9: adv_deg (int16) - unit: 0.1deg
+  const adv_deg_raw = combineInt16LE(bytes[8], bytes[9]);
+  const adv_deg = adv_deg_raw / 10.0;
+  
+  // Byte 10: squirt (uint8)
+  const squirt = bytes[10];
+  
+  // Byte 11: engine flags (uint8)
+  const engineByte = bytes[11];
+  const engineFlags = parseEngineFlags(engineByte);
+  
+  // Bytes 12-13: afrtgt1, afrtgt2 (uint8)
+  const afrtgt1 = bytes[12];
+  const afrtgt2 = bytes[13];
+  
+  // Bytes 14-15: wbo2_en1, wbo2_en2 (uint8)
+  const wbo2_en1 = bytes[14];
+  const wbo2_en2 = bytes[15];
+  
+  // Bytes 16-17: baro (int16) - unit: kPa x 10
+  const baro_raw = combineInt16LE(bytes[16], bytes[17]);
+  const baro = baro_raw / 10.0;
+  
+  // Bytes 18-19: map (int16) - unit: kPa x 10
+  const map_raw = combineInt16LE(bytes[18], bytes[19]);
+  const map = map_raw / 10.0;
+  
+  // Bytes 20-21: mat (int16) - unit: deg (F) x 10
+  const mat_raw_f = combineInt16LE(bytes[20], bytes[21]);
+  const mat_f = mat_raw_f / 10.0;
+  const mat = fahrenheitToCelsius(mat_f);
+  
+  // Bytes 22-23: clt (int16) - unit: deg (F) x 10
+  const clt_raw_f = combineInt16LE(bytes[22], bytes[23]);
+  const clt_f = clt_raw_f / 10.0;
+  const clt = fahrenheitToCelsius(clt_f);
+  
+  // Bytes 24-25: tps (int16) - unit: x 10
+  const tps_raw = combineInt16LE(bytes[24], bytes[25]);
+  const tps = tps_raw / 10.0;
+  
+  // Bytes 26-27: batt (int16) - unit: volts x 10
+  const batt_raw = combineInt16LE(bytes[26], bytes[27]);
+  const batt = batt_raw / 10.0;
+
+  console.log(`Parsed values - RPM: ${rpm}, TPS: ${tps}, CLT: ${clt}, Batt: ${batt}`);
+
+  return {
+    seconds, pw1, pw2, rpm, adv_deg, squirt,
+    engineFlags, afrtgt1, afrtgt2, wbo2_en1, wbo2_en2,
+    baro, map, mat, clt, tps, batt,
+    _raw: { baro_raw, map_raw, mat_raw: mat_raw_f, clt_raw: clt_raw_f, tps_raw, batt_raw }
+  };
+}
+
+// Top-level parse entry - ONLY HANDLES ASCII HEX DATA
+function parsePacket(data) {
+  if (!data) return null;
+  
+  // Handle DataView from BLE (ASCII hex data)
+  if (data instanceof DataView) {
+    // Convert DataView to ASCII string
+    const asciiString = new TextDecoder().decode(data);
+    console.log('Received ASCII hex string:', asciiString);
+    
+    // Convert ASCII hex string to bytes
+    const realBytes = asciiHexStringToBytes(asciiString);
+    if (realBytes) {
+      return parseBytes(realBytes);
+    }
+  } 
+  // Handle string input (for testing)
+  else if (typeof data === 'string') {
+    const realBytes = asciiHexStringToBytes(data);
+    return realBytes ? parseBytes(realBytes) : null;
+  }
+  
+  return null;
+}
+
+/* ------------------------- UI update helpers ------------------------- */
+function setParamValue(key, value) {
+  const el = document.getElementById('value-' + key);
+  if (el) el.textContent = (typeof value === 'number') ? (Number.isInteger(value) ? String(value) : value.toFixed(key==='batt'?2: (key==='adv_deg'?1:1))) : String(value);
+  const ts = performance.now()/1000;
+  if (paramBuffers[key]) {
+    const v = (typeof value === 'number') ? value : (Number(value) || value);
+    paramBuffers[key].push({ t: ts, v });
+    if (paramBuffers[key].length > MAX_SAMPLES) paramBuffers[key].shift();
+  }
+}
+
+function pushSample(p) {
+  const flat = [
+    p.seconds, p.pw1, p.pw2, p.rpm, p.adv_deg, p.squirt,
+    p.engineFlags.Ready?1:0, p.engineFlags.Crank?1:0, p.engineFlags.StartW?1:0, p.engineFlags.Warmup?1:0, p.engineFlags.TPSAEN?1:0, p.engineFlags.TPSDEN?1:0,
+    p.afrtgt1||0, p.afrtgt2||0, p.wbo2_en1||0, p.wbo2_en2||0,
+    p.baro, p.map, p.mat, p.clt, p.tps, p.batt
+  ];
+  liveRows.push(flat);
+  if (liveRows.length > 20000) liveRows.shift();
+  exportCSVBtn.disabled = false;
+
+  // update UI
+  setParamValue('seconds', p.seconds);
+  setParamValue('pw1', p.pw1);
+  setParamValue('pw2', p.pw2);
+  setParamValue('rpm', p.rpm);
+  setParamValue('adv_deg', p.adv_deg);
+  setParamValue('squirt', p.squirt);
+  setParamValue('engineReady', p.engineFlags.Ready?1:0);
+  setParamValue('engineCrank', p.engineFlags.Crank?1:0);
+  setParamValue('engineStartW', p.engineFlags.StartW?1:0);
+  setParamValue('engineWarmup', p.engineFlags.Warmup?1:0);
+  setParamValue('TPSAEN', p.engineFlags.TPSAEN?1:0);
+  setParamValue('TPSDEN', p.engineFlags.TPSDEN?1:0);
+  setParamValue('afrtgt1', p.afrtgt1||0);
+  setParamValue('afrtgt2', p.afrtgt2||0);
+  setParamValue('wbo2_en1', p.wbo2_en1||0);
+  setParamValue('wbo2_en2', p.wbo2_en2||0);
+  setParamValue('baro', p.baro);
+  setParamValue('map', p.map);
+  setParamValue('mat', p.mat);
+  setParamValue('clt', p.clt);
+  setParamValue('tps', p.tps);
+  setParamValue('batt', p.batt);
+
+  // Update battery status in the status row
+  battStatusEl.textContent = p.batt.toFixed(2) + ' V';
+
+  appendToMiniChart(miniTPS, p.tps);
+  appendToMiniChart(miniRPM, p.rpm);
+  appendToMiniChart(miniCLT, p.clt);
+}
+
+function appendToMiniChart(chart, value) {
+  chart.data.labels.push('');
+  chart.data.datasets[0].data.push(value);
+  if (chart.data.labels.length > 60) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+  chart.update('none');
+}
+
+/* ------------------------- BLE functions ------------------------- */
+async function connectBLE() {
+  try {
+    const device = await navigator.bluetooth.requestDevice({ filters:[{ name:'ECU' }], optionalServices:[serviceUUID] });
+    bleDevice = device; deviceNameChip.textContent = 'Device: ' + (device.name || 'ECU');
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    bleServer = await device.gatt.connect();
+    const service = await bleServer.getPrimaryService(serviceUUID);
+    dataCharacteristic = await service.getCharacteristic(dataCharUUID);
+    await dataCharacteristic.startNotifications();
+    dataCharacteristic.addEventListener('characteristicvaluechanged', onDataNotification);
+
+    try { controlCharacteristic = await service.getCharacteristic(controlCharUUID); } catch(e){}
+    try { statusCharacteristic = await service.getCharacteristic(statusCharUUID); await statusCharacteristic.startNotifications(); statusCharacteristic.addEventListener('characteristicvaluechanged', onStatusNotification); } catch(e){}
+    try { fileCharacteristic = await service.getCharacteristic(fileCharUUID); await fileCharacteristic.startNotifications(); fileCharacteristic.addEventListener('characteristicvaluechanged', onFileNotification); } catch(e){}
+
+    bleStatusEl.textContent = 'Connected';
+    connectBtn.disabled = true; disconnectBtn.disabled = false;
+    startLoggingBtn.disabled = false; stopLoggingBtn.disabled = false;
+    deleteSDBtn.disabled = false;
+  } catch (err) {
+    console.error('BLE connect error', err); alert('Connection failed: ' + err);
+  }
+}
+function onDisconnected() {
+  bleStatusEl.textContent = 'Disconnected';
+  connectBtn.disabled = false; disconnectBtn.disabled = true;
+  startLoggingBtn.disabled = true; stopLoggingBtn.disabled = true;
+  deleteSDBtn.disabled = true;
+  deviceNameChip.textContent = 'Device: —';
+  battStatusEl.textContent = '—'; // Reset battery status when disconnected
+}
+async function disconnectBLE() { if (bleServer && bleServer.connected) bleServer.disconnect(); onDisconnected(); }
+
+function onDataNotification(ev) {
+  const dv = ev.target.value;
+  console.log('Received data:', dv.byteLength, 'bytes');
+  const parsed = parsePacket(dv);
+  if (parsed) {
+    console.log('Parsed data:', parsed);
+    pushSample(parsed);
+  } else {
+    console.warn('Failed to parse data');
+  }
+}
+function onStatusNotification(ev) {
+  try {
+    const txt = new TextDecoder().decode(ev.target.value);
+    const parts = txt.split(',');
+    const l = parts[0] && parts[0].split(':')[1];
+    const s = parts[1] && parts[1].split(':')[1];
+    loggingStatusEl.textContent = l === '1' ? 'Running' : 'Stopped';
+    sdStatusEl.textContent = s === '1' ? 'Available' : 'Unavailable';
+  } catch(e){}
+}
+function onFileNotification(ev) {
+  try {
+    const txt = new TextDecoder().decode(ev.target.value);
+    if (txt === 'FILE_END') fileProgressEl.textContent = 'SD: download complete';
+    else if (txt === 'FILE_EMPTY') fileProgressEl.textContent = 'SD: empty';
+    else fileProgressEl.textContent = 'SD chunk: ' + txt.slice(0,40);
+  } catch(e){}
+}
+
+async function sendControl(cmd) {
+  try {
+    if (!controlCharacteristic) { alert('No control characteristic'); return; }
+    await controlCharacteristic.writeValue(new TextEncoder().encode(cmd));
+  } catch(e){ console.error(e); alert('Control failed: '+e); }
+}
+
+connectBtn.onclick = connectBLE;
+disconnectBtn.onclick = disconnectBLE;
+startLoggingBtn.onclick = () => sendControl('START');
+stopLoggingBtn.onclick = () => sendControl('STOP');
+deleteSDBtn.onclick = () => { if (confirm('Delete SD data?')) sendControl('DELETE'); };
+exportCSVBtn.onclick = exportCSV;
+exportCSVBtn.disabled = true;
+
+</script>
+
+</body>
+</html>
