@@ -110,18 +110,17 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 /v3.0
 │
 ├── /firmware
-│   └── ECU_BLE_LOGGER.ino        # ESP32 firmware
+│   └── ECU_BLE_LOGGER.ino       # ESP32 firmware
 │
 ├── /webapp
-│   └── index.html                 # Web Bluetooth dashboard
+│   └── app.html                 # Web Bluetooth dashboard
 │
-├── /tools
-│   ├── decryptCSV.py              # Convert logged HEX to readable CSV
-│   └── plotCSV.py                 # Visualize CSV data locally
+├── /docs
+│   ├── BlockDiagram.pptx              # Block Diagram Powerpoint
+│   └── CommunicationECU.doc           # ECU Communication Manual
 │
 └── /fig
-    ├── block-diagram.png
-    └── circuit-design.png
+    └── BlockDiagramECU.png            # Block Diagram Image
 ```
 
 <!---------------------------------------------------------------------------------------------------------->
