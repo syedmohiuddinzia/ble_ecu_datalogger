@@ -66,3 +66,70 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 | **Cylinder Temperature (°C)** | Engine temperature monitoring |
 | **Throttle Position (%)** | Throttle opening percentage |
 | **Battery Voltage (V)** | ECU power supply voltage |
+
+## ⚡ Hardware Setup
+- Microcontroller: ESP32 (Dual UART + BLE + SD)
+- Interfaces:
+  - Serial0 → Debugging
+  - Serial2 → ECU data
+- Storage: microSD card (FAT32)
+- Indicators:
+  - Wi-Fi/BLE connection
+  - Data reception
+  - Logging status
+ 
+## 💻 Software Components
+| **Component** | **Description** |
+|----------------|-----------------|
+| **ESP32 Firmware** | Reads ECU data, manages SD logs, and serves BLE services. |
+| **Web Bluetooth App** | Connects to ESP32, visualizes real-time data, and manages logs. |
+| **Python Utilities** | CSV decryption and plotting tools for post-flight analysis. |
+
+## 📂 Repository Structure
+```bash
+/v3.0
+│
+├── /firmware
+│   └── ECU_BLE_LOGGER.ino        # ESP32 firmware
+│
+├── /webapp
+│   └── index.html                 # Web Bluetooth dashboard
+│
+├── /tools
+│   ├── decryptCSV.py              # Convert logged HEX to readable CSV
+│   └── plotCSV.py                 # Visualize CSV data locally
+│
+└── /fig
+    ├── block-diagram.png
+    └── circuit-design.png
+```
+
+🧩 How to Use
+**1. Flash ESP32 Firmware**
+  - Upload ```ECU_BLE_LOGGER.ino``` using Arduino IDE.
+**2. Prepare SD Card**
+  - Format as FAT32 and insert into the ESP32 module.
+**3. Run the Web App**
+  - Open ```index.html``` in **Chrome** or **Edge** (supports Web Bluetooth).
+  - Click **Connect** → Select your **ECU** device.
+**4. Monitor Data**
+  - View real-time ECU telemetry.
+  - Start/Stop logging as needed.
+  - Download or delete logs via the dashboard.
+
+## 🧪 Tools & Technologies
+- ESP32 (Arduino Framework)
+- Bluetooth Low Energy (BLE GATT)
+- Chart.js
+- Web Bluetooth API
+- HTML5 + CSS3
+- Python (Data Processing)
+
+## 📈 Example Use Cases
+- UAV engine diagnostics and health monitoring
+- ECU performance analysis and tuning
+- Fuel injection optimization
+- Sensor validation and test bench setups
+
+## 🧾 License
+- MIT License © 2025 — Syed Mohiuddin Zia
