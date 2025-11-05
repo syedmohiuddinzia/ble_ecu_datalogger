@@ -1,23 +1,30 @@
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 # BLE ECU Datalogger (v3.0) for 🛩️ Mugin-6000
 ### Modern BLE + Web Dashboard for ECU Telemetry, Logging, and Real-Time Visualization.
 The **DLA-232 aircraft engine**, powering the **Mugin-6000 VTOL UAV**, is a high-performance two-stroke gasoline engine designed for endurance and reliability. The **ECU Datalogger v3.0** enhances its operation by enabling **real-time telemetry, wireless data logging, and live visualization** through Bluetooth Low Energy (BLE) and a responsive web dashboard.
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🚀 Overview
 This version introduces a **fully redesigned software architecture** built on the same ESP32-based hardware. It replaces the previous HTTP + Node-RED system with a **BLE-based communication protocol** and a **modern Web Bluetooth Dashboard** for seamless, cable-free access to live and historical ECU data.
-
 The new software provides:
 - Real-time data streaming over BLE
 - On-device SD card logging
 - File management (download/delete) via BLE
 - Interactive dashboard for parameter visualization and charting
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## ⚙️ System Architecture
 ```
 ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 ```
 - **ESP32:** Reads ECU data, logs it to SD card, and streams it via BLE.
 - **Web Dashboard:** Connects directly to the ESP32 through the **Web Bluetooth API**, allowing users to view, record, and download ECU telemetry data wirelessly.
-
+- 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧠 Key Features
 - ESP32 Firmware
   - Custom **BLE GATT** Service for ECU data communication.
@@ -37,6 +44,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
   - Supports **CSV export** of logged data.
   - Displays system status (connected, logging, SD status) in real-time.
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧩 Improvements Over v2.0
 | **Feature** | **v2.0 (Old)** | **v3.0 (New)** |
 |--------------|----------------|----------------|
@@ -49,10 +58,13 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 | **Data Control** | Basic read/delete | Start/Stop/Delete/Download over BLE |
 | **Efficiency** | Dual Serial (Wi-Fi load) | Optimized low-power BLE handling |
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧱 Block Diagram
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧾 ECU Parameters Logged
-
 | **Parameter** | **Description** |
 |----------------|-----------------|
 | **Seconds** | Time since logging started |
@@ -69,6 +81,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 | **Throttle Position (%)** | Throttle opening percentage |
 | **Battery Voltage (V)** | ECU power supply voltage |
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## ⚡ Hardware Setup
 - Microcontroller: ESP32 (Dual UART + BLE + SD)
 - Interfaces:
@@ -79,7 +93,9 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
   - Wi-Fi/BLE connection
   - Data reception
   - Logging status
- 
+
+ <!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 💻 Software Components
 | **Component** | **Description** |
 |----------------|-----------------|
@@ -87,6 +103,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 | **Web Bluetooth App** | Connects to ESP32, visualizes real-time data, and manages logs. |
 | **Python Utilities** | CSV decryption and plotting tools for post-flight analysis. |
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 📂 Repository Structure
 ```bash
 /v3.0
@@ -106,6 +124,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
     └── circuit-design.png
 ```
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 🧩 How to Use
 **1. Flash ESP32 Firmware**
   - Upload ```ECU_BLE_LOGGER.ino``` using Arduino IDE.
@@ -119,6 +139,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
   - Start/Stop logging as needed.
   - Download or delete logs via the dashboard.
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧪 Tools & Technologies
 - ESP32 (Arduino Framework)
 - Bluetooth Low Energy (BLE GATT)
@@ -127,11 +149,15 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 - HTML5 + CSS3
 - Python (Data Processing)
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 📈 Example Use Cases
 - UAV engine diagnostics and health monitoring
 - ECU performance analysis and tuning
 - Fuel injection optimization
 - Sensor validation and test bench setups
 
+<!---------------------------------------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------------------------------------->
 ## 🧾 License
 - MIT License © 2025 — Syed Mohiuddin Zia
