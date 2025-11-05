@@ -49,6 +49,8 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
 | **Data Control** | Basic read/delete | Start/Stop/Delete/Download over BLE |
 | **Efficiency** | Dual Serial (Wi-Fi load) | Optimized low-power BLE handling |
 
+## 🧱 Block Diagram
+
 ## 🧾 ECU Parameters Logged
 
 | **Parameter** | **Description** |
