@@ -36,3 +36,33 @@ ECU → ESP32 (BLE Server + SD Logger) ↔ Web Dashboard (BLE Client)
   - Click on any parameter to open a **detailed live graph**.
   - Supports **CSV export** of logged data.
   - Displays system status (connected, logging, SD status) in real-time.
+
+## 🧩 Improvements Over v2.0
+| **Feature** | **v2.0 (Old)** | **v3.0 (New)** |
+|--------------|----------------|----------------|
+| **Communication** | Wi-Fi (HTTP + Node-RED) | Bluetooth Low Energy (BLE) |
+| **Real-time Display** | Node-RED dashboard | Web Bluetooth dashboard |
+| **Connectivity** | Requires Wi-Fi connection | Works on mobile/PC with Chrome/Edge |
+| **Data Access** | HTTP file read/download | BLE-based log management |
+| **Responsiveness** | Dependent on network | Instant BLE response |
+| **User Interface** | Static Node-RED UI | Interactive HTML + Chart.js UI |
+| **Data Control** | Basic read/delete | Start/Stop/Delete/Download over BLE |
+| **Efficiency** | Dual Serial (Wi-Fi load) | Optimized low-power BLE handling |
+
+## 🧾 ECU Parameters Logged
+
+| **Parameter** | **Description** |
+|----------------|-----------------|
+| **Seconds** | Time since logging started |
+| **Injection Pulse Width 1 & 2 (µs)** | Fuel injector open duration |
+| **RPM** | Engine speed (revolutions per minute) |
+| **Ignition Advance Angle (°)** | Spark ignition timing before TDC |
+| **Engine Status Flags** | Ready, Crank, Warmup, TPS modes |
+| **Air-Fuel Ratio Target 1 & 2** | Desired air-fuel mixture ratios |
+| **WBO2 Enable 1 & 2** | Oxygen sensor activity |
+| **Barometric Pressure (kPa)** | Atmospheric pressure |
+| **Manifold Absolute Pressure (kPa)** | Engine load indicator |
+| **Manifold Air Temperature (°C)** | Intake air temperature |
+| **Cylinder Temperature (°C)** | Engine temperature monitoring |
+| **Throttle Position (%)** | Throttle opening percentage |
+| **Battery Voltage (V)** | ECU power supply voltage |
